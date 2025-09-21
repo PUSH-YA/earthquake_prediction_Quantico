@@ -16,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 import sys 
 
 
-OUTPUTS_DIR = "../results/Gaussian"
+OUTPUTS_DIR = "../results_multivariate/Gaussian"
 
 # =============================
 # 1. Data Preparation Functions
@@ -133,11 +133,30 @@ def train_hmm(model_type, X, n_components=3, n_iter=100):
     return model
 
 def compute_aic_bic(model, X):
-    n_params = (model.n_components - 1) + model.n_components * X.shape[1] * 2  # transitions + means + covariances
-    log_likelihood = model.score(X)
-    aic = 2 * n_params - 2 * log_likelihood
-    bic = np.log(len(X)) * n_params - 2 * log_likelihood
-    return log_likelihood, aic, bic
+    try:
+        log_likelihood = model.score(X)
+        
+        # Check for NaN values
+        if np.isnan(log_likelihood):
+            print("Warning: NaN log likelihood detected")
+            print("Startprob:", model.startprob_)
+            print("Lambdas:", model.lambdas_)
+            print("Transmat:", model.transmat_)
+            return -np.inf, np.inf, np.inf
+        
+        n_params = model.n_features * model.n_components  # For Poisson means
+        n_params += model.n_components * (model.n_components - 1)  # Transition matrix
+        n_params += model.n_components - 1  # Initial probabilities
+        
+        n_samples = len(X)
+        aic = -2 * log_likelihood + 2 * n_params
+        bic = -2 * log_likelihood + n_params * np.log(n_samples)
+        
+        return log_likelihood, aic, bic
+        
+    except Exception as e:
+        print(f"Error in compute_aic_bic: {e}")
+        return -np.inf, np.inf, np.inf
 
 def select_best_model(model_type, X, min_states=2, max_states=15):
     results = []
@@ -339,7 +358,7 @@ def main(model_type):
     X = scaler.fit_transform(X)
 
     # Model selection: automatic determination of number of states
-    best_model, best_n_states, results_df = select_best_model(model_type, X, min_states=3, max_states=10)
+    best_model, best_n_states, results_df = select_best_model(model_type, X, min_states=3, max_states=20)
 
     # =======================================
     # trained model is saved offline
@@ -388,12 +407,12 @@ def main(model_type):
 
 if __name__ == "__main__":
 
-    model_type = sys.argv[1]
+    model_type = sys.argv[1].lower()
 
     if model_type == 'gauss':
-        OUTPUTS_DIR = "../results/Gaussian"
+        OUTPUTS_DIR = "../results_multivariate/Gaussian"
     elif model_type == 'pois':
-        OUTPUTS_DIR = "../results/Poisson"
+        raise NotImplementedError("Poisson HMM Multivariate is not implemented yet.")
     else:
         raise ValueError("Unknown model type, emissions must be Gaussian, Poisson")
         
