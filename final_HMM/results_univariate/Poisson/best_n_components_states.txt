@@ -1,1 +1,1 @@
-Best number of components: 18
+Best number of components: 13
