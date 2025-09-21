@@ -3,6 +3,7 @@ Work for a Quantitative research club at UBC
 
 ## 3 ideas:
 - Classic ML, random forests by nature but not good 
+  - this will involve both multivariate and univariate model
 - HMM -- what i am working on 
 - GEV -- Tarek's work
 - PHSA -- currently what is happening in the market
@@ -12,9 +13,11 @@ Work for a Quantitative research club at UBC
 
 ### Model types 
 Trying for Gaussian and Poisson emissions
-- Gaussian cuz normal
-  - model 
+- Gaussian cuz normal 
 - Poisson cuz earthquakes modelled as poisson events
+  - $\lambda>0$ and thus has more constraints
+  - Poisson $\mathcal{L}$ can underflow more easily and need more data constraints
+  - Poisson multivariate is not converging and getting $\lambda = \infty$ 
 
 
 ### Covariance assumption 
