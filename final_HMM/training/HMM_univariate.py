@@ -128,14 +128,14 @@ if __name__ == "__main__":
     model_type = sys.argv[1].lower()
 
     if model_type == 'gauss':
-        OUTPUTS_DIR = "../results_univariate/Gaussian"
+        OUTPUTS_DIR = "./results_univariate/Gaussian"
     elif model_type == 'pois':
-        OUTPUTS_DIR = "../results_univariate/Poisson"
+        OUTPUTS_DIR = "./results_univariate/Poisson"
     else:
         raise ValueError("Unknown model type, emissions must be Gaussian, Poisson")
 
 
-    earthquakes = load_data("../data/training_earthquakes.csv")
+    earthquakes = load_data("./data/training_earthquakes.csv")
     best_model = train_hmm(earthquakes, model_type, max_states=20)
     joblib.dump(best_model, f"{OUTPUTS_DIR}/best_model.joblib")
     save_plots(best_model)

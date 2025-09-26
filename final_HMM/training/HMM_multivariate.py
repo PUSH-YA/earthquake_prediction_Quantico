@@ -14,9 +14,10 @@ import joblib
 warnings.filterwarnings("ignore")
 from sklearn.preprocessing import StandardScaler 
 import sys 
+import os
 
 
-OUTPUTS_DIR = "../results_multivariate/Gaussian"
+OUTPUTS_DIR = "./results_multivariate/Gaussian"
 
 # =============================
 # 1. Data Preparation Functions
@@ -261,7 +262,13 @@ def plot_state_sequence(model, X):
     plt.ylabel('Hidden State')
     
 
-def export_states_to_csv(df, model, X,write_csv=False, output_path=f'{OUTPUTS_DIR}/earthquake_states_output.csv'):
+def export_states_to_csv(df, model, X, write_csv=False, output_path=None):
+    if output_path is None:
+        output_path = f'{OUTPUTS_DIR}/earthquake_states_output.csv'
+    
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
     states = model.predict(X)
     df_out = df.copy()
     df_out['HiddenState'] = states
@@ -353,9 +360,9 @@ def main(model_type):
     feature_names = features.columns.tolist()
     X = features.values
 
-    # After getting raw features, scale:
-    scaler = StandardScaler()
-    X = scaler.fit_transform(X)
+    # # After getting raw features, scale:
+    # scaler = StandardScaler()
+    # X = scaler.fit_transform(X)
 
     # Model selection: automatic determination of number of states
     best_model, best_n_states, results_df = select_best_model(model_type, X, min_states=3, max_states=20)
@@ -410,7 +417,7 @@ if __name__ == "__main__":
     model_type = sys.argv[1].lower()
 
     if model_type == 'gauss':
-        OUTPUTS_DIR = "../results_multivariate/Gaussian"
+        OUTPUTS_DIR = "results_multivariate/Gaussian"
     elif model_type == 'pois':
         raise NotImplementedError("Poisson HMM Multivariate is not implemented yet.")
     else:
