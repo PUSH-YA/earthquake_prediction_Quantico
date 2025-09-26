@@ -12,8 +12,8 @@ OUTPUTS_DIR=""
 
 ########### HELPERS #########
 
-def load_data(filepath):
-    # Load the dataset
+
+def load_earthquake_data(filepath):
     df = pd.read_csv(filepath, parse_dates=['Orgin date'])
     df = df.sort_values('Orgin date').reset_index(drop=True)
     return df
@@ -43,6 +43,7 @@ def compute_energy_budget(df, window_days=30):
     df = df.reset_index()
 
     return df
+
 
 def compute_features(df, ref_point=(24.785, 121.006)):
     df = df.copy()
@@ -134,13 +135,7 @@ def compute_aic_bic(model, X):
         print(f"Error in compute_aic_bic: {e}")
         return -np.inf, np.inf, np.inf
 
-def compute_states(best_model, df):
-    # Compute features
-    df, features = compute_features(df, ref_point=(24.785, 121.006))
-    X = features.values
-
-    scaler = StandardScaler()
-    X = scaler.fit_transform(X)
+def compute_states(best_model, X):
 
     # Predict the hidden states
     hidden_states = best_model.predict(X)
@@ -164,11 +159,11 @@ def compute_states(best_model, df):
     # Generate forecasted values based on the hidden states
     forecasted_values = best_model.means_[hidden_states]
 
-    return hidden_states, features, forecasted_values
+    return hidden_states, forecasted_values
 
-def evaluate_model(best_model, hidden_states, features):
+def evaluate_model(best_model, hidden_states, X):
 
-    log_likelihood, aic, bic = compute_aic_bic(best_model, features.values)
+    log_likelihood, aic, bic = compute_aic_bic(best_model, X)
 
     # Print evaluation metrics
     print(f"Log-Likelihood: {log_likelihood}")
@@ -205,15 +200,13 @@ def evaluate_model(best_model, hidden_states, features):
                         break
         return states
 
-    X = features.values
-
     # plot accuracies
     critiera = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     accuracies = []
     unassigned_states = []
 
-    for criteria in critiera:
-        actual_states = categorize_into_states(X, thresholds, criteria)
+    for crit in critiera:
+        actual_states = categorize_into_states(X, thresholds, crit)
         accuracy = np.sum(actual_states == hidden_states) 
         no_states = np.sum(actual_states == -3)
 
@@ -256,22 +249,25 @@ def evaluate_model(best_model, hidden_states, features):
 
 ######## DO VALIDATION ########
 
-def perform_validation(best_model, df):
+def perform_validation(best_model, df, scaler):
 
-    # Define severe event condition
     df['SevereEvent'] = ((df['Magnitude'] >= 6) & (df['Depth'] <= 100)) | ((df['Magnitude'] >= 5.5) & (df['Depth'] <= 10))
 
-    hidden_states, features, forecasted_values = compute_states(best_model, df)
+    df,features = compute_features(df, ref_point=(24.785, 121.006))
+    feature_names = features.columns.tolist()
+    X = scaler.transform(features.values)
+
+    hidden_states, forecasted_values = compute_states(best_model, X)
 
     # Calculate Mean Squared Error
-    mse = mean_squared_error(features.values, forecasted_values)
+    mse = mean_squared_error(X, forecasted_values)
 
     print(f"Mean Squared Error: {mse}")
 
     for i, feature in enumerate(features.columns):
         # Plot the actual vs forecasted values
         plt.figure(figsize=(10, 6))
-        plt.plot(features.values[:, i], label='Actual Values')  # Assuming the first feature is the one you want to plot
+        plt.plot(X[:, i], label='Actual Values')  # Assuming the first feature is the one you want to plot
         plt.plot(forecasted_values[:, i], label='Forecasted Values', linestyle='--')
         plt.legend()
         plt.title(f'Actual vs Forecasted Values {i}\'th Feature')
@@ -279,7 +275,7 @@ def perform_validation(best_model, df):
         plt.ylabel('Value')
         plt.savefig(f'{OUTPUTS_DIR}/actual_vs_forecasted/{feature}_{i}.png')
 
-    evaluate_model(best_model, hidden_states, features)
+    evaluate_model(best_model, hidden_states, X)
     
 
 if __name__ == "__main__":
@@ -299,11 +295,11 @@ if __name__ == "__main__":
         raise ValueError("Unknown model type, emissions must be Gaussian, Poisson")
 
 
-    best_model = joblib.load(f"{INPUTS_DIR}/best_hmm_model.joblib")
-    data = load_data('../data/training_earthquakes.csv')
     scaler = joblib.load(f"{INPUTS_DIR}/scaler.joblib")
-    _, X = compute_features(data, ref_point=(24.785, 121.006))
-    X = scaler.transform(X.values)
-    print(compute_aic_bic(best_model, X))
+    df = load_earthquake_data('../data/testing_earthquakes.csv')
+    
+    best_model = joblib.load(f"{INPUTS_DIR}/best_hmm_model.joblib")
+
+    perform_validation(best_model, df, scaler)
 
 

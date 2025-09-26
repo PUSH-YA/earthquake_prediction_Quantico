@@ -380,7 +380,7 @@ def main(model_type):
     joblib.dump(scaler, f'{OUTPUTS_DIR}/scaler.joblib')
 
     # Model selection: automatic determination of number of states
-    best_model, best_n_states, results_df = select_best_model(model_type, X, min_states=19, max_states=19)
+    best_model, best_n_states, results_df = select_best_model(model_type, X, min_states=3, max_states=20)
 
     # =======================================
     # trained model is saved offline
