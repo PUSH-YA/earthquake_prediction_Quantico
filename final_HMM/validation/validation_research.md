@@ -5,7 +5,7 @@
 Main Idea:
 - split data into training (80%) and testing (20%) chronologically 
 - train Gausssian $HMM$ based on the training data 
-- use best performing $HMM$ parameter (based on log-likelihood, $BIC$) to forecast values
+- use best performing $HMM$ parameter (based on $BIC$) to forecast values
   - the best $X_{\text{train}}$ is based on the time series cross validation with `n_splits=3`  
   - otherwise it was always choosing the highest number fo states and fitting to it 
 - Get the $\mathcal{L}, AIC, BIC$ of the best performing model on the testing data
@@ -17,6 +17,25 @@ BIC: &&12679.881862766959
 - Use the $HMM$ to fit states on the testing data based on feature thresholds and differing criteria
   - criteria that fits the states on the test features the best is chosen based on most accuracy
 - Compare fitted value against forecasted values to get the following:
+```
+Confusion Matrix:
+[[   0    0    0    0    0    0    0    0    0    0    0    0]
+ [   1    0    0    0    0    0    0    0    0    0  122  165]
+ [  40    0  116    0    4    0    0    2    0    0  184   25]
+ [  20    0    0    4    0    0  107    0    0    0   64    0]
+ [   2    0    5    0   14    0    0   13    0    0   23   78]
+ [   1    0    0    0    0    0    1    0    0    0    0    0]
+ [  20    0    0    0    0    0   43    0    0    0    0    0]
+ [   9    0   26    0    2    0    0  121    0    0    1 1171]
+ [   0    0    1    0    0    0    0    2    0    0    0   75]
+ [   0    0    0    0    0    0    8    0    0   12   22    3]
+ [  42    0    0    0    0    0    7    0    0    0   95    3]
+ [  60    0    0    0    0    0    0    0    0    0   26  293]]
+
+
+Weighted Average Classification Report:
+{'precision': 0.6248000268556664, 'recall': 0.23013517969007583, 'f1-score': 0.19850950335697146, 'support': 3033.0}
+```
 
 For reference, the training metrics were:
 $$\begin{align*}
