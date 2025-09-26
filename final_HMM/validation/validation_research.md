@@ -5,7 +5,7 @@
 Main Idea:
 - split data into training (80%) and testing (20%) chronologically 
 - train Gausssian $HMM$ based on the training data 
-- use best performing $HMM$ parameter (based on log-likelihood, $\mathcal{L}$) to forecast values
+- use best performing $HMM$ parameter (based on log-likelihood, $BIC$) to forecast values
   - the best $X_{\text{train}}$ is based on the time series cross validation with `n_splits=3`  
   - otherwise it was always choosing the highest number fo states and fitting to it 
 - Get the $\mathcal{L}, AIC, BIC$ of the best performing model on the testing data
