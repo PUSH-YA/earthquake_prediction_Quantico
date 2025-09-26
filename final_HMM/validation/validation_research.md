@@ -5,14 +5,42 @@
 Main Idea:
 - split data into training (80%) and testing (20%) chronologically 
 - train Gausssian $HMM$ based on the training data 
-- use best performing $HMM$ parameter (based on log-likelihood, $\ell$) to forecast values
-  - initially, the code was run for up to 20 states but changed as most of the 15+ states were not converging or were having degenerative solutions 
+- use best performing $HMM$ parameter (based on log-likelihood, $\mathcal{L}$) to forecast values
+  - the best $X_{\text{train}}$ is split into train and validation set to minimise overfitting
+  - otherwise it was always choosing the highest number fo states and fitting to it 
 - Get the $\ell, AIC, BIC$ of the best performing model on the testing data
-$$$$
+$$\begin{align}
+\mathcal{L}: 2482.161743372317\\
+AIC: 5912.323486744634\\
+BIC: 8764.527245389021
+\end{align}$$
 - Use the $HMM$ to fit states on the testing data based on feature thresholds and differing criteria
   - criteria that fits the states on the test features the best is chosen based on most accuracy
 - Compare fitted value against forecasted values to get the following:
 
+For reference, the training metrics were:
+$$\begin{align*}
+\mathcal{L}: 8856.992155074497\\
+AIC: -16765.98431014899\\
+BIC: -13235.212952932314
+\end{align*}$$
+
+
+Tried with univariate models on just the counts for Poisson (and also Gaussian):
+
+Poisson:
+$$\begin{align*}
+\mathcal{L}: -2536.0145200794263 \\
+AIC: 5434.029040158853 \\ 
+BIC: 6403.977432758818 \\
+\end{align*}$$
+
+Gaussian:
+$$\begin{align*}
+\mathcal{L}: 5456.240959411002 \\
+AIC: -10230.481918822004 \\
+BIC: -8403.120582487261 \\
+\end{align*}$$
 
 
 > The $HMM$ pipeline is given in much more detail below:

@@ -163,11 +163,25 @@ def select_best_model(model_type, X, min_states=2, max_states=15):
     results = []
     models = []
     for n in range(min_states, max_states + 1):
-        model = train_hmm(model_type, X, n_components=n)
-        log_likelihood, aic, bic = compute_aic_bic(model, X)
-        results.append({'n_states': n, 'log_likelihood': log_likelihood, 'aic': aic, 'bic': bic})
+        
+        # Split data into training and validation sets
+        train_size = int(0.8 * len(X))
+        X_train = X[:train_size]
+        X_val = X[train_size:]
+        
+        model = train_hmm(model_type, X_train, n_components=n)
+        
+        # Compute metrics on validation sets
+        val_log_likelihood, val_aic, val_bic = compute_aic_bic(model, X_val)
+        
+        results.append({
+            'n_states': n, 
+            'log_likelihood': val_log_likelihood, 
+            'aic': val_aic, 
+            'bic': val_bic
+        })
         models.append(model)
-        print(f"Tested {n} states: LogLik = {log_likelihood:.2f}, AIC = {aic:.2f}, BIC = {bic:.2f}")
+        print(f"Tested {n} states: Train LogLik = {val_log_likelihood:.2f}, Val LogLik = {val_log_likelihood:.2f}, Val BIC = {val_bic:.2f}")
 
     results_df = pd.DataFrame(results)
 
@@ -360,12 +374,13 @@ def main(model_type):
     feature_names = features.columns.tolist()
     X = features.values
 
-    # # After getting raw features, scale:
-    # scaler = StandardScaler()
-    # X = scaler.fit_transform(X)
+    # After getting raw features, scale:
+    scaler = StandardScaler()
+    X = scaler.fit_transform(X)
+    joblib.dump(scaler, f'{OUTPUTS_DIR}/scaler.joblib')
 
     # Model selection: automatic determination of number of states
-    best_model, best_n_states, results_df = select_best_model(model_type, X, min_states=3, max_states=20)
+    best_model, best_n_states, results_df = select_best_model(model_type, X, min_states=19, max_states=19)
 
     # =======================================
     # trained model is saved offline

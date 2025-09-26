@@ -139,8 +139,8 @@ def compute_states(best_model, df):
     df, features = compute_features(df, ref_point=(24.785, 121.006))
     X = features.values
 
-    # scaler = StandardScaler()
-    # X = scaler.fit_transform(X)
+    scaler = StandardScaler()
+    X = scaler.fit_transform(X)
 
     # Predict the hidden states
     hidden_states = best_model.predict(X)
@@ -253,10 +253,6 @@ def evaluate_model(best_model, hidden_states, features):
         f.write(f"\nConfusion Matrix:\n{confusion_matrix(expected, output)}\n")
         f.write(f"\n\nWeighted Average Classification Report:\n{report['weighted avg']}\n")
 
-    
-
-
-
 
 ######## DO VALIDATION ########
 
@@ -304,8 +300,10 @@ if __name__ == "__main__":
 
 
     best_model = joblib.load(f"{INPUTS_DIR}/best_hmm_model.joblib")
-    data = load_data('../data/testing_earthquakes.csv')
-    perform_validation(best_model, data)
-    
+    data = load_data('../data/training_earthquakes.csv')
+    scaler = joblib.load(f"{INPUTS_DIR}/scaler.joblib")
+    _, X = compute_features(data, ref_point=(24.785, 121.006))
+    X = scaler.transform(X.values)
+    print(compute_aic_bic(best_model, X))
 
 
