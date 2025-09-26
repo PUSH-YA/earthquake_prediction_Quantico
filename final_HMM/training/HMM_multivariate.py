@@ -15,6 +15,7 @@ warnings.filterwarnings("ignore")
 from sklearn.preprocessing import StandardScaler 
 import sys 
 import os
+from sklearn.model_selection import TimeSeriesSplit
 
 
 OUTPUTS_DIR = "./results_multivariate/Gaussian"
@@ -159,50 +160,88 @@ def compute_aic_bic(model, X):
         print(f"Error in compute_aic_bic: {e}")
         return -np.inf, np.inf, np.inf
 
-def select_best_model(model_type, X, min_states=2, max_states=15):
+def select_best_model(model_type, X, min_states=2, max_states=15, n_splits=3):
     results = []
     models = []
+    
+    tscv = TimeSeriesSplit(n_splits=n_splits)
     for n in range(min_states, max_states + 1):
+        fold_results = []
         
-        # Split data into training and validation sets
-        train_size = int(0.8 * len(X))
-        X_train = X[:train_size]
-        X_val = X[train_size:]
+        for train_idx, val_idx in tscv.split(X):
+            X_train = X[train_idx]
+            X_val = X[val_idx]
+            
+            try:
+                model = train_hmm(model_type, X_train, n_components=n)
+                
+                # Compute metrics on validation sets
+                val_log_likelihood, val_aic, val_bic = compute_aic_bic(model, X_val)
+                
+                fold_results.append({
+                    'val_log_likelihood': val_log_likelihood,
+                    'val_aic': val_aic,
+                    'val_bic': val_bic
+                })
+                
+            except Exception as e:
+                # Handle failed folds
+                fold_results.append({
+                    'val_log_likelihood': -np.inf,
+                    'val_aic': np.inf,
+                    'val_bic': np.inf
+                })
         
-        model = train_hmm(model_type, X_train, n_components=n)
+        # Average across folds (excluding failed ones)
+        valid_folds = [f for f in fold_results if f['val_log_likelihood'] != -np.inf]
         
-        # Compute metrics on validation sets
-        val_log_likelihood, val_aic, val_bic = compute_aic_bic(model, X_val)
+        if len(valid_folds) > 0:
+            avg_log_likelihood = np.mean([f['val_log_likelihood'] for f in valid_folds])
+            avg_aic = np.mean([f['val_aic'] for f in valid_folds])
+            avg_bic = np.mean([f['val_bic'] for f in valid_folds])
+            
+            # Train final model on full dataset for this n_states
+            final_model = train_hmm(model_type, X, n_components=n)
+        else:
+            avg_log_likelihood = -np.inf
+            avg_aic = np.inf
+            avg_bic = np.inf
+            final_model = None
         
         results.append({
-            'n_states': n, 
-            'log_likelihood': val_log_likelihood, 
-            'aic': val_aic, 
-            'bic': val_bic
+            'n_states': n,
+            'log_likelihood': avg_log_likelihood,
+            'aic': avg_aic,
+            'bic': avg_bic,
+            'successful_folds': len(valid_folds)
         })
-        models.append(model)
-        print(f"Tested {n} states: Train LogLik = {val_log_likelihood:.2f}, Val LogLik = {val_log_likelihood:.2f}, Val BIC = {val_bic:.2f}")
+        models.append(final_model)
+        
+        print(f"Tested {n} states: Avg Val LogLik = {avg_log_likelihood:.2f}, Avg Val BIC = {avg_bic:.2f}, Folds: {len(valid_folds)}/{n_splits}")
 
     results_df = pd.DataFrame(results)
-
+    
     # Plot
     plt.figure(figsize=(10, 6))
-    plt.plot(results_df['n_states'], results_df['log_likelihood'], label='Log Likelihood', marker='o')
-    plt.plot(results_df['n_states'], results_df['aic'], label='AIC', marker='x')
-    plt.plot(results_df['n_states'], results_df['bic'], label='BIC', marker='^')
+    plt.plot(results_df['n_states'], results_df['log_likelihood'], label='CV Log Likelihood', marker='o')
+    plt.plot(results_df['n_states'], results_df['aic'], label='CV AIC', marker='x')
+    plt.plot(results_df['n_states'], results_df['bic'], label='CV BIC', marker='^')
     plt.xlabel('Number of States')
     plt.ylabel('Score')
-    plt.title('Model Selection: Log-likelihood, AIC, BIC by Number of States')
+    plt.title('Model Selection: Time Series CV Log-likelihood, AIC, BIC by Number of States')
     plt.legend()
     plt.grid(True)
+
+    # Select best model by BIC (excluding failed models)
+    valid_results = results_df[results_df['bic'] != np.inf]
+    if len(valid_results) == 0:
+        raise ValueError("All models failed during cross-validation!")
     
-
-    # Select best model by BIC
-    best_idx = results_df['bic'].idxmin()
+    best_idx = valid_results['bic'].idxmin()
     best_model = models[best_idx]
-    best_n_states = results_df.loc[best_idx, 'n_states']
+    best_n_states = valid_results.loc[best_idx, 'n_states']
 
-    print(f"\nBest model selected: {best_n_states} states (BIC = {results_df.loc[best_idx, 'bic']:.2f})")
+    print(f"\nBest model selected: {best_n_states} states (CV BIC = {valid_results.loc[best_idx, 'bic']:.2f})")
     return best_model, best_n_states, results_df
 
 # =============================

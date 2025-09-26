@@ -6,23 +6,23 @@ Main Idea:
 - split data into training (80%) and testing (20%) chronologically 
 - train Gausssian $HMM$ based on the training data 
 - use best performing $HMM$ parameter (based on log-likelihood, $\mathcal{L}$) to forecast values
-  - the best $X_{\text{train}}$ is split into train and validation set to minimise overfitting
+  - the best $X_{\text{train}}$ is based on the time series cross validation with `n_splits=3`  
   - otherwise it was always choosing the highest number fo states and fitting to it 
-- Get the $\ell, AIC, BIC$ of the best performing model on the testing data
-$$\begin{align}
-\mathcal{L}: 2482.161743372317\\
-AIC: 5912.323486744634\\
-BIC: 8764.527245389021
-\end{align}$$
+- Get the $\mathcal{L}, AIC, BIC$ of the best performing model on the testing data
+$$\begin{align*}
+\mathcal{L}: &&9755.188755348854\\
+AIC: &&8635.969558918778\\
+BIC: &&12679.881862766959
+\end{align*}$$
 - Use the $HMM$ to fit states on the testing data based on feature thresholds and differing criteria
   - criteria that fits the states on the test features the best is chosen based on most accuracy
 - Compare fitted value against forecasted values to get the following:
 
 For reference, the training metrics were:
 $$\begin{align*}
-\mathcal{L}: 8856.992155074497\\
-AIC: -16765.98431014899\\
-BIC: -13235.212952932314
+\mathcal{L}:&& -5590.1346817662425\\
+AIC:&& 11552.269363532485\\
+BIC:&& 12679.881862766959
 \end{align*}$$
 
 
@@ -30,18 +30,22 @@ Tried with univariate models on just the counts for Poisson (and also Gaussian):
 
 Poisson:
 $$\begin{align*}
-\mathcal{L}: -2536.0145200794263 \\
-AIC: 5434.029040158853 \\ 
-BIC: 6403.977432758818 \\
+\mathcal{L}:&& -2536.0145200794263 \\
+AIC:&& 5434.029040158853 \\ 
+BIC:&& 6403.977432758818 \\
 \end{align*}$$
 
 Gaussian:
 $$\begin{align*}
-\mathcal{L}: 5456.240959411002 \\
-AIC: -10230.481918822004 \\
-BIC: -8403.120582487261 \\
+\mathcal{L}:&& 5456.240959411002 \\
+AIC:&& -10230.481918822004 \\
+BIC:&& -8403.120582487261 \\
 \end{align*}$$
 
+HOWEVER, there are couple of issues with just using univariate data based on counts of above a threshold 
+1. Loss of risk-critical information: A univariate count model ignores magnitude, depth, location, and energy release patterns that are essential for assessing actual financial/infrastructure risk 
+   1. a single magnitude 8.0 earthquake has vastly different hazard than three magnitude 6.0 events, despite both scenarios having different "counts"
+2. No actionable insights for risk mitigation: Risk modelling or portfolio optimisation models will need to understand what types of seismic conditions drive risk (shallow vs deep events, proximity to assets, energy buildup patterns) to make informed hedging or allocation decisions - a simple count prediction provides no guidance on which geographic regions, asset types, or time horizons require different risk premiums
 
 > The $HMM$ pipeline is given in much more detail below:
 
