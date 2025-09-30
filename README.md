@@ -18,7 +18,7 @@ I helped with a different models but mainly focused on $HMM$ and the notes for i
 
 # Hidden Markov Models for Earthquake Prediction: GaussianHMM Analysis
 
-![](https://cdn.quantconnect.com/i/tu/hmm-model.png)
+![alt](https://osl-dynamics.readthedocs.io/en/latest/_images/hmm-generative-model.png)
 
 ## Overall summary 
 
