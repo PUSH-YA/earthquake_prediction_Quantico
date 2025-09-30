@@ -15,9 +15,10 @@ Models in order of their prediction capabilities (worst to best)
 All of these models were fine-tuned and used for earthquake and seismic prediction which would then be used for a portfolio optimisation model as a factor. Improevement on the the optimisation model will be backtested and reported in the paper.  
 
 I helped with a different models but mainly focused on $HMM$ and the notes for it is reported below
-## HMM notes:
 
 # Hidden Markov Models for Earthquake Prediction: GaussianHMM Analysis
+
+![](https://cdn.quantconnect.com/i/tu/hmm-model.png)
 
 ## Overall summary 
 
