@@ -66,6 +66,7 @@ HOWEVER, there are couple of issues with just using univariate data based on cou
    1. a single magnitude 8.0 earthquake has vastly different hazard than three magnitude 6.0 events, despite both scenarios having different "counts"
 2. No actionable insights for risk mitigation: Risk modelling or portfolio optimisation models will need to understand what types of seismic conditions drive risk (shallow vs deep events, proximity to assets, energy buildup patterns) to make informed hedging or allocation decisions - a simple count prediction provides no guidance on which geographic regions, asset types, or time horizons require different risk premiums
 
+
 > The $HMM$ pipeline is given in much more detail below:
 
 ## 1. Gaussian Hidden Markov Models (GaussianHMM)

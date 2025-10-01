@@ -20,6 +20,8 @@ I helped with a different models but mainly focused on $HMM$ and the notes for i
 
 ![](https://cdn.quantconnect.com/i/tu/hmm-model.png)
 
+---
+
 ## Overall summary 
 
 Main Idea:
@@ -30,31 +32,31 @@ Main Idea:
   - otherwise it was always choosing the highest number fo states and fitting to it 
 - Get the $\mathcal{L}, AIC, BIC$ of the best performing model on the testing data
 $$\begin{align*}
-\mathcal{L}: &&9755.188755348854\\
-AIC: &&8635.969558918778\\
-BIC: &&12679.881862766959
+\mathcal{L}: &&-3835.579679558612\\
+AIC: &&8043.159359117224\\
+BIC: &&9162.3785555473
 \end{align*}$$
 - Use the $HMM$ to fit states on the testing data based on feature thresholds and differing criteria
   - criteria that fits the states on the test features the best is chosen based on most accuracy
 - Compare fitted value against forecasted values to get the following:
 ```
 Confusion Matrix:
-[[   0    0    0    0    0    0    0    0    0    0    0    0]
- [   1    0    0    0    0    0    0    0    0    0  122  165]
- [  40    0  116    0    4    0    0    2    0    0  184   25]
- [  20    0    0    4    0    0  107    0    0    0   64    0]
- [   2    0    5    0   14    0    0   13    0    0   23   78]
- [   1    0    0    0    0    0    1    0    0    0    0    0]
- [  20    0    0    0    0    0   43    0    0    0    0    0]
- [   9    0   26    0    2    0    0  121    0    0    1 1171]
- [   0    0    1    0    0    0    0    2    0    0    0   75]
- [   0    0    0    0    0    0    8    0    0   12   22    3]
- [  42    0    0    0    0    0    7    0    0    0   95    3]
- [  60    0    0    0    0    0    0    0    0    0   26  293]]
+[[  0   0   0   0   0   0   0   0   0   0   0]
+ [  9  21   1   0   0 153   1   0 159   0  29]
+ [  5   0   3   0   0  90   0  31  14  98   0]
+ [ 40   0   0 122   0 366  17   0 171   0 489]
+ [ 18   0   0   0  35   0   0   0   0   0   0]
+ [ 68   0   0   0   0 113   0  11  51   2   0]
+ [  4   1   0   3   0  40 233   0  42   0 223]
+ [  3   0   0   0   0   0   0  21   0   0   0]
+ [ 21   0   0   0   0   0   0   2  53   0   0]
+ [  5   0   0   0  16   0   0   5   0 100   0]
+ [  9   0   0   0   0   0   0   0  20   0 115]]
 
 
 Weighted Average Classification Report:
-{'precision': 0.6248000268556664, 'recall': 0.23013517969007583, 'f1-score': 0.19850950335697146, 'support': 3033.0}
+{'precision': 0.7879553180628392, 'recall': 0.26904055390702275, 'f1-score': 0.26753124523384547, 'support': 3033.0}
+
 ```
 
 For reference, the training metrics were:
@@ -86,6 +88,70 @@ HOWEVER, there are couple of issues with just using univariate data based on cou
    1. a single magnitude 8.0 earthquake has vastly different hazard than three magnitude 6.0 events, despite both scenarios having different "counts"
 2. No actionable insights for risk mitigation: Risk modelling or portfolio optimisation models will need to understand what types of seismic conditions drive risk (shallow vs deep events, proximity to assets, energy buildup patterns) to make informed hedging or allocation decisions - a simple count prediction provides no guidance on which geographic regions, asset types, or time horizons require different risk premiums
 
+
+## Model interpretation
+
+
+With the plots, we can see that after state 11, the states were not converging:
+
+![](final_HMM/training/results_multivariate/Gaussian/states_vs_scores.png)
+
+We can see that the matrix is quite sparse:
+![](final_HMM/training/results_multivariate/Gaussian/transition_matrix_heatmap.png)
+
+
+The model becomes a bit hard to interpret when looking geographically:
+![](final_HMM/training/results_multivariate/Gaussian/earthquake_geographic_states.png)
+
+So, looking at the features we get:
+![](final_HMM/training/results_multivariate/Gaussian/features_vs_states_line.png)
+
+
+## Analysis
+
+### Transition matrix 
+- Diagonal dominance in transition matrix: Strong self-transition probabilities suggest states tend to persist, indicating earthquake activity has temporal clustering or "stickiness"
+  - the aftershocks
+- Limited State Connectivity: Most states only transition to 2-3 other states, suggesting distinct seismic regimes with restricted pathways between them
+- Potential Absorbing States: Some states may act as temporary "attractors" in the seismic cycle?
+  - Like state 10
+
+### Geographic interpretation 
+
+- There is a lot of spatial mixing,
+ - could be that states are more clustered due to temporal or magnitude based events rather than graphically (not clustered near fault line)
+   - maybe state 6 could be related with severe earthquake 
+ - more symptomatic of the univariate distribution with counts and no other features 
+- Different earthquake "phases" or "regimes" can occur across the entire study region
+
+### Feature state relation
+
+The following is my interpretation from reading about how earthquakes work and trying to interpret the graph, use it as reference with caution ⚠️
+
+#### **States 3-6: Moderate Severe Earthquake Phase**
+- **Magnitude**: Elevated magnitude levels (4.5-5.5 range)
+- **Inter-event Time**: Moderate to high inter-event times, suggesting these occur during building stress phases
+- **Depth**: Mixed depth distribution, indicating both shallow and deeper moderate events
+- **Time Since Mag 6.5**: Moderate values, representing intermediate phases in seismic cycles
+- **Energy**: Elevated energy release corresponding to moderate-severe events
+- **Distance from Reference**: Distributed across various distances from reference point
+
+**Seismic Interpretation**: These states capture the transitional phase between background seismicity and major events - likely representing foreshock sequences, moderate mainshocks, or stress redistribution following major earthquakes.
+
+### **States 8-10: Major Earthquake/Immediate Aftermath Phase**
+- **Magnitude**: Highest magnitude values (5.5+ range), representing major seismic events
+- **Inter-event Time**: Very low values, indicating rapid succession of events (classic aftershock pattern)
+- **Depth**: Relatively shallow depths, making these events particularly hazardous
+- **Time Since Mag 6.5/5**: Very low values, confirming these states occur immediately following or during major earthquake sequences
+- **Energy**: Peak energy release values, representing maximum seismic energy discharge
+- **Distance from Reference**: Concentrated patterns suggesting spatial clustering of major events
+
+**Seismic Interpretation**: These states represent the most critical seismic phases - major mainshocks (State 10) and their immediate aftershock sequences (States 8-9), characterized by high magnitude, shallow depth, and temporal clustering. 
+
+
+
+---
+
 > The $HMM$ pipeline is given in much more detail below:
 
 ## 1. Gaussian Hidden Markov Models (GaussianHMM)
@@ -101,6 +167,14 @@ A GaussianHMM is characterized by:
 - **Initial state probabilities**: $\pi = \{\pi_i\}$ where $\pi_i = P(q_1 = S_i)$
 - **State transition probabilities**: $A = \{a_{ij}\}$ where $a_{ij} = P(q_{t+1} = S_j | q_t = S_i)$
 - **Emission probabilities**: Gaussian distributions for each state
+
+**Severe Event Definition:**
+$$\text{Severe Event} = \begin{cases}
+1 & \text{if } (M \geq 6 \text{ and } D \leq 100) \text{ or } (M \geq 5.5 \text{ and } D \leq 10) \\
+0 & \text{otherwise}
+\end{cases}$$
+
+Where $M$ is magnitude and $D$ is depth in kilometers.
 
 #### Mathematical Formulation
 
@@ -164,9 +238,7 @@ Where:
 
 ## 2. Validation and Testing Methodology
 
-### 2.1 Model Evaluation Metrics
-
-#### 2.1.1 Log-Likelihood and Information Criteria
+### 2.1 Model evaluation metrics 
 
 **Log-Likelihood:**
 $$\mathcal{L}(\lambda) = \log P(O | \lambda) = \log \sum_{Q} P(O, Q | \lambda)$$
@@ -182,16 +254,8 @@ Where:
 - $n$: Number of observations
 - For GaussianHMM: $k = N(N-1) + (N-1) + Nd + Nd = N^2 + 2Nd - 1$
 
-#### 2.1.2 Mean Squared Error (MSE)
 
-For forecasting evaluation:
-$$\text{MSE} = \frac{1}{T} \sum_{t=1}^{T} \|x_t - \hat{x}_t\|^2$$
-
-Where $x_t$ is actual observation and $\hat{x}_t$ is forecasted value.
-
-### 2.2 State Validation Methods
-
-#### 2.2.1 Threshold-Based State Categorization
+### 2.2 Fitting states to test $O$
 
 States are categorized using statistical bounds:
 $$\text{Lower Threshold}_i = \mu_i - 2\sigma_i$$
@@ -203,56 +267,14 @@ $$\text{Assigned State} = \arg\max_j \left\{\frac{\sum_{d=1}^{D} \mathbb{I}[\mu_
 
 Where $\mathbb{I}[\cdot]$ is the indicator function and $\eta \in [0.5, 1.0]$ is the criteria threshold.
 
-#### 2.2.2 Classification Performance Metrics
+#### 2.2.1 Classification Performance Metrics
 
 **Accuracy:** Percentage of correctly classified states
 **Precision, Recall, F1-score:** Standard classification metrics
 **Confusion Matrix:** Cross-tabulation of predicted vs actual states
 
-### 2.3 Forecasting Validation
+> fitted states were compared against forecasted states for getting an estimate of state prediction accuracy
 
-#### 2.3.1 State-Based Forecasting
 
-For each hidden state $i$, the forecasted observation is:
-$$\hat{x}_t = \mu_i \text{ where } i = \arg\max_j P(q_t = j | O_{1:t-1})$$
 
-#### 2.3.2 Temporal Analysis
-
-- **Hidden State Time Series**: Analysis of state transitions over time
-- **State Persistence**: Duration analysis of consecutive state occurrences
-- **Transition Patterns**: Identification of common state transition sequences
-
-### 2.4 Severe Event Prediction
-
-**Severe Event Definition:**
-$$\text{Severe Event} = \begin{cases}
-1 & \text{if } (M \geq 6 \text{ and } D \leq 100) \text{ or } (M \geq 5.5 \text{ and } D \leq 10) \\
-0 & \text{otherwise}
-\end{cases}$$
-
-Where $M$ is magnitude and $D$ is depth in kilometers.
-
-### 2.5 Cross-Validation Strategy
-
-1. **Temporal Split**: Training on historical data, testing on recent events
-2. **Walk-Forward Validation**: Incremental training with rolling prediction windows
-3. **State Consistency Check**: Verification that similar conditions yield similar states
-
-## 3. Implementation Details
-
-### 3.1 Model Training Process
-
-1. **Data Preprocessing**: Feature scaling and normalization
-2. **Model Selection**: Grid search over number of states (2-10)
-3. **Parameter Optimization**: Expectation-Maximization algorithm
-4. **Convergence Criteria**: Log-likelihood improvement threshold
-5. **Model Selection**: Best model based on BIC/AIC scores
-
-### 3.2 Validation Pipeline
-
-1. **Load trained model**: Best performing GaussianHMM from training phase
-2. **Feature computation**: Extract same features from test data
-3. **State fitting**: Fit the state on the test data based on the extracted features and thresholds of the given features 
-4. **State comparison**: Compare the fitted states against the predicted states (using ViterBi algorithm)
-5. **Confusion matrix**: Compute confusion matrix based on the plot 
 

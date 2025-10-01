@@ -231,6 +231,7 @@ def select_best_model(model_type, X, min_states=2, max_states=15, n_splits=3):
     plt.title('Model Selection: Time Series CV Log-likelihood, AIC, BIC by Number of States')
     plt.legend()
     plt.grid(True)
+    plt.savefig(f"{OUTPUTS_DIR}/states_vs_scores.png")
 
     # Select best model by BIC (excluding failed models)
     valid_results = results_df[results_df['bic'] != np.inf]
@@ -238,11 +239,17 @@ def select_best_model(model_type, X, min_states=2, max_states=15, n_splits=3):
         raise ValueError("All models failed during cross-validation!")
     
     best_idx = valid_results['bic'].idxmin()
-    best_model = models[best_idx]
     best_n_states = valid_results.loc[best_idx, 'n_states']
 
+    # retrain model with best_n_states 
+    best_model = train_hmm(model_type, X_train, n_components=best_n_states)
+    with open(f"{OUTPUTS_DIR}/best_model_vals.txt", "w") as f:
+        f.write(f"Best model selected: {best_n_states} states")
+        log_likelihood, aic, bic = compute_aic_bic(model, X_val)
+        f.write(f" log likelihood: {log_likelihood}, aic: {aic}, bic: {bic}")
+
     print(f"\nBest model selected: {best_n_states} states (CV BIC = {valid_results.loc[best_idx, 'bic']:.2f})")
-    return best_model, best_n_states, results_df
+    return best_model, results_df
 
 # =============================
 # 3. State Mapping and Transition Analysis
@@ -279,18 +286,34 @@ def analyze_transitions(model, states, severe_state):
 # 4. Feature Importance Functions
 # =============================
 
-def analyze_emission_parameters(model, feature_names):
+def analyze_emission_parameters(model, feature_names, outputdir = None):
+
+    if outputdir == None:
+        outputdir = f"{OUTPUTS_DIR}"
+
+    
     means = model.means_
     covars = model.covars_
+
+    with open(f"{OUTPUTS_DIR}/emission_params.txt", "w") as f:
+        f.write("")
     
     print("\n=== Emission Means per State ===")
-    for idx, mean in enumerate(means):
-        print(f"State {idx}: {dict(zip(feature_names, mean))}")
+    with open(f"{OUTPUTS_DIR}/emission_params.txt", "a") as f:
+        f.write("=== Emission Means per State ===\n")
+        for idx, mean in enumerate(means):
+            state_means = dict(zip(feature_names, mean))
+            print(f"State {idx}: {state_means}")
+            f.write(f"State {idx}: {state_means}\n")
 
     print("\n=== Emission Variances per State ===")
-    for idx, covar in enumerate(covars):
-        variances = np.diag(covar)
-        print(f"State {idx}: {dict(zip(feature_names, variances))}")
+    with open(f"{OUTPUTS_DIR}/emission_params.txt", "a") as f:
+        f.write("\n=== Emission Variances per State ===\n")
+        for idx, covar in enumerate(covars):
+            variances = np.diag(covar)
+            state_variances = dict(zip(feature_names, variances))
+            print(f"State {idx}: {state_variances}")
+            f.write(f"State {idx}: {state_variances}\n")
 
 def permutation_importance(model, X, feature_names):
     baseline_score = model.score(X)
@@ -313,6 +336,7 @@ def plot_state_sequence(model, X):
     plt.title('Predicted Hidden States over Time')
     plt.xlabel('Event Index')
     plt.ylabel('Hidden State')
+    plt.savefig(f"{OUTPUTS_DIR}/plot_state_sequence.png")
     
 
 def export_states_to_csv(df, model, X, write_csv=False, output_path=None):
@@ -419,15 +443,11 @@ def main(model_type):
     joblib.dump(scaler, f'{OUTPUTS_DIR}/scaler.joblib')
 
     # Model selection: automatic determination of number of states
-    best_model, best_n_states, results_df = select_best_model(model_type, X, min_states=3, max_states=20)
+    best_model, results_df = select_best_model(model_type, X, min_states=3, max_states=20)
 
     # =======================================
     # trained model is saved offline
     joblib.dump(best_model, f'{OUTPUTS_DIR}/best_hmm_model.joblib')
-
-    # Save the best number of states
-    with open(f'{OUTPUTS_DIR}/best_n_states.txt', 'w') as f:
-        f.write(str(best_n_states))
 
     # Save the results DataFrame
     results_df.to_csv(f'{OUTPUTS_DIR}/model_selection_results.csv', index=False)

@@ -1,0 +1,1 @@
+Best model selected: 11 states log likelihood: 3112.134422166114, aic: -5186.268844332228, bic: -2039.8662255005493
